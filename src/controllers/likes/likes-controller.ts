@@ -39,7 +39,7 @@ export const createLike = async (parameters: {
       postId: parameters.postId,
     },
   });
-  return { Like };
+  return { like };
 };
 
 export const deleteLike = async (parameters: {
