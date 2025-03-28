@@ -14,7 +14,7 @@ export const getMe = async (parameters: { userId: string }): Promise<GetMeResult
   }
 
   return {
-    user,
+    user
   };
 };
 
