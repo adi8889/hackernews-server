@@ -1,14 +1,7 @@
 
-import type { Prisma } from "@prisma/client";
 
-export type Comment = {
-  id: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
-  postId: string;
-  userId: string;
-}; // Define the Comment type manually based on your database schema
+import type { Comment } from "@prisma/client"
+
 
 export type GetCommentsResult = {
   comments: Comment[];
