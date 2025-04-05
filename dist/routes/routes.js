@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.allRoutes = void 0;
+const hono_1 = require("hono");
+const authentication_routes_1 = require("./authentication-routes");
+const user_routes_1 = require("./user-routes");
+const posts_routes_1 = require("./posts-routes");
+const likes_routes_1 = require("./likes-routes");
+const comments_routes_1 = require("./comments-routes");
+exports.allRoutes = new hono_1.Hono();
+exports.allRoutes.route("/auth", authentication_routes_1.authenticationRoutes);
+exports.allRoutes.route("/users", user_routes_1.usersRoutes);
+exports.allRoutes.route("/posts", posts_routes_1.postsRoutes);
+exports.allRoutes.route("/likes", likes_routes_1.likesRoutes);
+exports.allRoutes.route("/comments", comments_routes_1.commentsRoutes);

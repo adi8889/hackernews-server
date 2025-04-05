@@ -7,8 +7,8 @@ import {
   type SignUpWithUsernameAndPasswordResult,
 } from "./authentication-types";
 import { prismaClient } from "../../extras/prisma";
-import jwt from "jsonwebtoken";
-import { jwtsecretKey } from "../../../environment";
+import * as jwt from "jsonwebtoken";
+import { jwtsecretKey } from "../../environment";
 
 export const signUpWithUsernameAndPassword = async (parameters: {
   username: string;

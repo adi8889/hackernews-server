@@ -4,11 +4,10 @@ import {
   type CreatePostResult,
   type GetPostsResult,
 } from "./posts-types";
-
 export const getMePosts = async (parameters: {
   userId: string;
 }): Promise<GetPostsResult> => {
-  const posts = await prismaClient.post.findMany({
+  const rawPosts = await prismaClient.post.findMany({
     where: {
       userId: parameters.userId,
     },
@@ -16,27 +15,30 @@ export const getMePosts = async (parameters: {
       createdAt: "desc",
     },
   });
-
+  const posts = rawPosts.map(post => ({
+    ...post,
+    updatedAt: post.updatedAT, // Correctly map updatedAT to updatedAt
+  })).map(({ updatedAT, ...rest }) => rest); // Remove the incorrect property
   return {
     posts,
   };
 };
-
 export const getAllPosts = async (parameters: {
   page: number;
 }): Promise<GetPostsResult> => {
   const limit = 10;
   const offset = (parameters.page - 1) * limit;
-
-  const posts = await prismaClient.post.findMany({
+  const rawPosts = await prismaClient.post.findMany({
     orderBy: { createdAt: "desc" },
     skip: offset,
     take: limit,
   });
-
+  const posts = rawPosts.map(post => ({
+    ...post,
+    updatedAt: post.updatedAT, // Map updatedAT to updatedAt
+  })).map(({ updatedAT, ...rest }) => rest); // Remove the incorrect property
   return { posts };
 };
-
 export const createPost = async (parameters: {
   userId: string;
   title: string;
@@ -50,15 +52,14 @@ export const createPost = async (parameters: {
         title: parameters.title,
         description: parameters.description,
         content: parameters.content,
+        updatedAT: new Date(), // Ensure updatedAT is explicitly set
       },
     });
-
-    return { newPost };
+    return { newPost: { ...newPost, updatedAt: newPost.updatedAT } };
   } catch (e) {
     throw createPostError.UNKNOWN;
   }
 };
-
 export const deletePost = async (parameters: {
   userId: string;
   postId: string;
@@ -68,14 +69,15 @@ export const deletePost = async (parameters: {
       id: parameters.postId,
     },
   });
-
   if (!post || post.userId != parameters.userId) {
     throw new Error("Unauthorized to delete this post");
   }
-
   await prismaClient.post.delete({
     where: {
       id: parameters.postId,
     },
   });
 };
+
+
+
