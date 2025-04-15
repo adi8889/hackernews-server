@@ -1,83 +1,65 @@
-import { prismaClient } from "../../extras/prisma";
-import {
-  createPostError,
-  type CreatePostResult,
-  type GetPostsResult,
-} from "./posts-types";
-export const getMePosts = async (parameters: {
-  userId: string;
-}): Promise<GetPostsResult> => {
-  const rawPosts = await prismaClient.post.findMany({
-    where: {
-      userId: parameters.userId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-  const posts = rawPosts.map(post => ({
-    ...post,
-    updatedAt: post.updatedAT, // Correctly map updatedAT to updatedAt
-  })).map(({ updatedAT, ...rest }) => rest); // Remove the incorrect property
-  return {
-    posts,
-  };
-};
+import { prismaClient } from "../../extras/prisma.js";
+import { PostError, type CreatePostResult, type GetAllPostsResult, type GetMyPostsResult } from "./posts-types.js";
+
 export const getAllPosts = async (parameters: {
   page: number;
-}): Promise<GetPostsResult> => {
-  const limit = 10;
-  const offset = (parameters.page - 1) * limit;
-  const rawPosts = await prismaClient.post.findMany({
+  pageSize: number;
+}): Promise<GetAllPostsResult> => {
+  const posts = await prismaClient.post.findMany({
     orderBy: { createdAt: "desc" },
-    skip: offset,
-    take: limit,
+    skip: (parameters.page - 1) * parameters.pageSize,
+    take: parameters.pageSize,
+    include: { user: { select: { username: true, name: true } } }
   });
-  const posts = rawPosts.map(post => ({
-    ...post,
-    updatedAt: post.updatedAT, // Map updatedAT to updatedAt
-  })).map(({ updatedAT, ...rest }) => rest); // Remove the incorrect property
+
   return { posts };
 };
+
+export const getMyPosts = async (parameters: {
+  userId: string;
+  page: number;
+  pageSize: number;
+}): Promise<GetMyPostsResult> => {
+  const posts = await prismaClient.post.findMany({
+    where: { userId: parameters.userId },
+    orderBy: { createdAt: "desc" },
+    skip: (parameters.page - 1) * parameters.pageSize,
+    take: parameters.pageSize,
+    include: { user: { select: { username: true, name: true } } }
+  });
+
+  return { posts };
+};
+
 export const createPost = async (parameters: {
   userId: string;
   title: string;
-  description?: string;
-  content: string;
+  url?: string;
 }): Promise<CreatePostResult> => {
-  try {
-    const newPost = await prismaClient.post.create({
-      data: {
-        userId: parameters.userId,
-        title: parameters.title,
-        description: parameters.description,
-        content: parameters.content,
-        updatedAT: new Date(), // Ensure updatedAT is explicitly set
-      },
-    });
-    return { newPost: { ...newPost, updatedAt: newPost.updatedAT } };
-  } catch (e) {
-    throw createPostError.UNKNOWN;
-  }
+  const post = await prismaClient.post.create({
+    data: {
+      title: parameters.title,
+      url: parameters.url,
+      userId: parameters.userId
+    },
+    include: { user: { select: { username: true, name: true } } }
+  });
+
+  return { post };
 };
+
 export const deletePost = async (parameters: {
   userId: string;
   postId: string;
-}) => {
+}): Promise<void> => {
   const post = await prismaClient.post.findUnique({
-    where: {
-      id: parameters.postId,
-    },
+    where: { id: parameters.postId }
   });
-  if (!post || post.userId != parameters.userId) {
-    throw new Error("Unauthorized to delete this post");
-  }
+
+  if (!post) throw PostError.NOT_FOUND;
+  if (post.userId !== parameters.userId) throw PostError.UNAUTHORIZED;
+
   await prismaClient.post.delete({
-    where: {
-      id: parameters.postId,
-    },
+    where: { id: parameters.postId }
   });
 };
-
-
-

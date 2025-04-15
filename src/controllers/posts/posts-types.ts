@@ -1,21 +1,19 @@
-import type { Prisma } from "@prisma/client";
+import type { Post, User } from "@prisma/client";
 
-export type Post = {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: Date;
-  updatedAt: Date;
+export type GetAllPostsResult = {
+  posts: (Post & { user: Pick<User, "username" | "name"> })[];
 };
 
-export type GetPostsResult = {
-  posts: Post[];
+export type GetMyPostsResult = {
+  posts: (Post & { user: Pick<User, "username" | "name"> })[];
 };
 
 export type CreatePostResult = {
-  newPost: Post;
+  post: Post & { user: Pick<User, "username" | "name"> };
 };
 
-export enum createPostError {
-  UNKNOWN,
-}
+export enum PostError {
+  NOT_FOUND = "NOT_FOUND",
+  UNAUTHORIZED = "UNAUTHORIZED",
+  BAD_REQUEST = "BAD_REQUEST"
+};

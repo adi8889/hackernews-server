@@ -1,5 +1,3 @@
-
-
 import type { User } from "@prisma/client";
 
 export type SignUpWithUsernameAndPasswordResult = {
@@ -17,7 +15,7 @@ export type LogInWithUsernameAndPasswordResult = {
   user: User;
 };
 
-export enum LogInWithUsernameAndPasswordError {
+export enum LogInWtihUsernameAndPasswordError {
   INCORRECT_USERNAME_OR_PASSWORD = "INCORRECT_USERNAME_OR_PASSWORD",
   UNKNOWN = "UNKNOWN",
 }

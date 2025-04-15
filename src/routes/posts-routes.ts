@@ -1,72 +1,45 @@
-
 import { Hono } from "hono";
-import { tokenMiddleware } from "./middlewares/token-middlewarre";
-import { createPost, deletePost, getAllPosts, getMePosts } from "../controllers/posts/posts-controller";
+import { tokenMiddleware } from "./middlewares/token-middlewarre.js";
+import { createPost, deletePost, getAllPosts, getMyPosts } from "../controllers/posts/posts-controller.js";
+import { PostError } from "../controllers/posts/posts-types.js";
 
 export const postsRoutes = new Hono();
 
-postsRoutes.get("", tokenMiddleware, async (context) => {
-  try {
-    const page = Number(context.req.query("page")) || 1;
-    const posts = await getAllPosts({ page });
-
-    return context.json({ data: posts });
-  } catch (e) {
-    return context.json(
-      {
-        error: "Failed to fetch posts",
-      },
-      500
-    );
-  }
+postsRoutes.get("", async (c) => {
+  const page = Number(c.req.query("page") || 1);
+  const pageSize = Number(c.req.query("pageSize") || 10);
+  
+  const result = await getAllPosts({ page, pageSize });
+  return c.json({ data: result }, 200);
 });
 
-postsRoutes.get("/me", tokenMiddleware, async (context) => {
-  const userId = context.get("userId");
-  try {
-    const userPosts = await getMePosts({ userId });
-
-    return context.json({
-      data: userPosts,
-    });
-  } catch (e) {
-    return context.json(
-      {
-        error: "Failed to fetch user's posts",
-      },
-      500
-    );
-  }
+postsRoutes.get("/me", tokenMiddleware, async (c) => {
+  const userId = c.get("userId");
+  const page = Number(c.req.query("page") || 1);
+  const pageSize = Number(c.req.query("pageSize") || 10);
+  
+  const result = await getMyPosts({ userId, page, pageSize });
+  return c.json({ data: result }, 200);
 });
 
-postsRoutes.post("", tokenMiddleware, async (context) => {
-  const userId = context.get("userId");
-  const { title, description, content } = await context.req.json();
-  try {
-    const newPost = await createPost({ userId, title, description, content });
-    return context.json(
-      {
-        data: newPost,
-      },
-      201
-    );
-  } catch (e) {
-    return context.json({
-      error: "Failed to create post",
-    });
-  }
+postsRoutes.post("", tokenMiddleware, async (c) => {
+  const userId = c.get("userId");
+  const { title, url } = await c.req.json();
+  
+  const result = await createPost({ userId, title, url });
+  return c.json({ data: result }, 201);
 });
 
-postsRoutes.delete("/:postId", tokenMiddleware, async (context) => {
-  const userId = context.get("userId");
-  const postId = context.req.param("postId");
-
+postsRoutes.delete("/:postId", tokenMiddleware, async (c) => {
+  const userId = c.get("userId");
+  const postId = c.req.param("postId");
+  
   try {
     await deletePost({ userId, postId });
-    return context.json({ message: "deleted the post successfully" });
+    return c.json({ message: "Post deleted" }, 200);
   } catch (e) {
-    return context.json({
-      error: "failed to delete post",
-    });
+    if (e === PostError.NOT_FOUND) return c.json({ message: "Post not found" }, 404);
+    if (e === PostError.UNAUTHORIZED) return c.json({ message: "Unauthorized" }, 403);
+    return c.json({ message: "Internal Server Error" }, 500);
   }
 });

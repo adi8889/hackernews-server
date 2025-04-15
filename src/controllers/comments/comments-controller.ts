@@ -1,70 +1,72 @@
-import { prismaClient } from "../../extras/prisma";
-import type {
-  CreateCommentResult,
-  GetCommentsResult,
-  UpdateCommentResult,
-} from "./comments-types";
+import { prismaClient } from "../../extras/prisma.js";
+import { CommentError, type GetCommentsResult, type CreateCommentResult, type UpdateCommentResult } from "./comments-types.js";
 
-export const getCommentsOnPost = async (parameters: {
+export const getComments = async (parameters: {
   postId: string;
   page: number;
+  pageSize: number;
 }): Promise<GetCommentsResult> => {
-  const limit = 10;
-  const offset = (parameters.page - 1) * limit;
-
   const comments = await prismaClient.comment.findMany({
-    where: {
-      postId: parameters.postId,
-    },
+    where: { postId: parameters.postId },
     orderBy: { createdAt: "desc" },
-    skip: offset,
-    take: limit,
+    skip: (parameters.page - 1) * parameters.pageSize,
+    take: parameters.pageSize,
+    include: { user: { select: { username: true, name: true } } }
   });
+
   return { comments };
 };
 
 export const createComment = async (parameters: {
   userId: string;
   postId: string;
-  content: string;
+  text: string;
 }): Promise<CreateCommentResult> => {
   const comment = await prismaClient.comment.create({
     data: {
+      text: parameters.text,
       userId: parameters.userId,
-      postId: parameters.postId,
-      content: parameters.content,
+      postId: parameters.postId
     },
+    include: { user: { select: { username: true, name: true } } }
   });
 
   return { comment };
+};
+
+export const updateComment = async (parameters: {
+  userId: string;
+  commentId: string;
+  text: string;
+}): Promise<UpdateCommentResult> => {
+  const comment = await prismaClient.comment.findUnique({
+    where: { id: parameters.commentId }
+  });
+
+  if (!comment) throw CommentError.NOT_FOUND;
+  if (comment.userId !== parameters.userId) throw CommentError.UNAUTHORIZED;
+
+  const updatedComment = await prismaClient.comment.update({
+    where: { id: parameters.commentId },
+    data: { text: parameters.text },
+    include: { user: { select: { username: true, name: true } } }
+  });
+
+  return { comment: updatedComment };
 };
 
 export const deleteComment = async (parameters: {
   userId: string;
   commentId: string;
 }): Promise<void> => {
-  const comment = await prismaClient.comment.delete({
-    where: {
-      id: parameters.commentId,
-      userId: parameters.userId,
-    },
-  });
-};
-
-export const updateComment = async (parameters: {
-  userId: string;
-  commentId: string;
-  content: string;
-}): Promise<UpdateCommentResult> => {
-  const comment = await prismaClient.comment.update({
-    where: {
-      id: parameters.commentId,
-      userId: parameters.userId,
-    },
-    data: {
-      content: parameters.content,
-    },
+  const comment = await prismaClient.comment.findUnique({
+    where: { id: parameters.commentId }
   });
 
-  return { comment };
+  if (!comment) throw CommentError.NOT_FOUND;
+  if (comment.userId !== parameters.userId) throw CommentError.UNAUTHORIZED;
+
+  await prismaClient.comment.delete({
+    where: { id: parameters.commentId }
+  });
 };

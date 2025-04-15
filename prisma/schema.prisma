@@ -11,26 +11,25 @@ datasource db {
 model User {
   id        String    @id @default(uuid())
   username  String    @unique
-  name      String?
   password  String
-  createdAT DateTime  @default(now())
-  updatedAT DateTime  @updatedAt
+  name      String?
   posts     Post[]
-  Like      Like[]
-  Comment   Comment[]
+  likes     Like[]
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Post {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  content     String
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAT   DateTime  @updatedAt
-  Like        Like[]
-  Comment     Comment[]
+  id        String    @id @default(uuid())
+  title     String
+  url       String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  likes     Like[]
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Like {
@@ -39,18 +38,18 @@ model Like {
   postId    String
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
-  createAt  DateTime @default(now())
-  updatedAT DateTime @updatedAt
+  createdAt DateTime @default(now())
 
+  @@unique([userId, postId])
 }
 
 model Comment {
   id        String   @id @default(uuid())
-  content   String
+  text      String
   userId    String
   postId    String
   user      User     @relation(fields: [userId], references: [id])
   post      Post     @relation(fields: [postId], references: [id])
   createdAt DateTime @default(now())
-  updatedAT DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }

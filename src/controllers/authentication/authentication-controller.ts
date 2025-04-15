@@ -1,19 +1,21 @@
 import { createHash } from "crypto";
-
 import {
-  LogInWithUsernameAndPasswordError,
+  LogInWtihUsernameAndPasswordError,
   SignUpWithUsernameAndPasswordError,
   type LogInWithUsernameAndPasswordResult,
   type SignUpWithUsernameAndPasswordResult,
 } from "./authentication-types";
 import { prismaClient } from "../../extras/prisma";
 import * as jwt from "jsonwebtoken";
-import { jwtsecretKey } from "../../environment";
+import { jwtSecretKey } from "../../../environment";
+
 
 export const signUpWithUsernameAndPassword = async (parameters: {
   username: string;
   password: string;
+  name?: string;
 }): Promise<SignUpWithUsernameAndPasswordResult> => {
+  // Check if user already exists
   const isUserExistingAlready = await checkIfUserExistsAlready({
     username: parameters.username,
   });
@@ -22,40 +24,42 @@ export const signUpWithUsernameAndPassword = async (parameters: {
     throw SignUpWithUsernameAndPasswordError.CONFLICTING_USERNAME;
   }
 
-  const passwordHash = createPasswordHash({
+  // Create password hash
+  const passwordHash = await createPasswordHash({
     password: parameters.password,
   });
 
+  // Create new user
   const user = await prismaClient.user.create({
     data: {
       username: parameters.username,
       password: passwordHash,
+      name: parameters.name,
     },
   });
 
+  // Generate JWT token
   const token = createJWToken({
     id: user.id,
     username: user.username,
   });
 
-  const result: SignUpWithUsernameAndPasswordResult = {
+  return {
     token,
     user,
   };
-
-  return result;
 };
 
 export const logInWithUsernameAndPassword = async (parameters: {
   username: string;
   password: string;
 }): Promise<LogInWithUsernameAndPasswordResult> => {
-  // 1. Create the password hash
+  // Create password hash
   const passwordHash = createPasswordHash({
     password: parameters.password,
   });
 
-  // 2. Find the user with the username and password hash
+  // Find user
   const user = await prismaClient.user.findUnique({
     where: {
       username: parameters.username,
@@ -63,12 +67,11 @@ export const logInWithUsernameAndPassword = async (parameters: {
     },
   });
 
-  // 3. If the user is not found, throw an error
   if (!user) {
-    throw LogInWithUsernameAndPasswordError.INCORRECT_USERNAME_OR_PASSWORD;
+    throw LogInWtihUsernameAndPasswordError.INCORRECT_USERNAME_OR_PASSWORD;
   }
 
-  // 4. If the user is found, create a JWT token and return it
+  // Generate JWT token
   const token = createJWToken({
     id: user.id,
     username: user.username,
@@ -81,18 +84,15 @@ export const logInWithUsernameAndPassword = async (parameters: {
 };
 
 const createJWToken = (parameters: { id: string; username: string }): string => {
-  // Generate token
   const jwtPayload: jwt.JwtPayload = {
-    iss: "https://purpleshorts.co.in",
+    iss: "hackernews-server",
     sub: parameters.id,
     username: parameters.username,
   };
 
-  const token = jwt.sign(jwtPayload, jwtsecretKey, {
+  return jwt.sign(jwtPayload, jwtSecretKey, {
     expiresIn: "30d",
   });
-
-  return token;
 };
 
 const checkIfUserExistsAlready = async (parameters: { username: string }): Promise<boolean> => {
@@ -102,11 +102,7 @@ const checkIfUserExistsAlready = async (parameters: { username: string }): Promi
     },
   });
 
-  if (existingUser) {
-    return true;
-  }
-
-  return false;
+  return !!existingUser;
 };
 
 const createPasswordHash = (parameters: { password: string }): string => {

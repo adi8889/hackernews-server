@@ -1,21 +1,19 @@
-import { checkOptionalParameter } from "hono/utils/url";
-import { prismaClient } from "../../extras/prisma";
-import type { CreateLikeResult, GetLikesResult } from "./likes.types";
+import { prismaClient } from "../../extras/prisma.js";
+import { LikeError, type GetLikesResult, type CreateLikeResult } from "./likes.types.ts";
 
-export const getLikesOnPost = async (parameters: {
+export const getLikes = async (parameters: {
   postId: string;
   page: number;
+  pageSize: number;
 }): Promise<GetLikesResult> => {
-  const limit = 10;
-  const offset = (parameters.page - 1) * limit;
   const likes = await prismaClient.like.findMany({
-    where: {
-      postId: parameters.postId,
-    },
-    orderBy: { createAt: "desc" },
-    skip: offset,
-    take: limit,
+    where: { postId: parameters.postId },
+    orderBy: { createdAt: "desc" },
+    skip: (parameters.page - 1) * parameters.pageSize,
+    take: parameters.pageSize,
+    include: { user: { select: { username: true, name: true } } }
   });
+
   return { likes };
 };
 
@@ -23,22 +21,21 @@ export const createLike = async (parameters: {
   userId: string;
   postId: string;
 }): Promise<CreateLikeResult> => {
-  const existingLike = await prismaClient.like.findFirst({
-    where: {
-        userId: parameters.userId,
-        postId: parameters.postId,
-      },
+  const existingLike = await prismaClient.like.findUnique({
+    where: { userId_postId: { userId: parameters.userId, postId: parameters.postId } },
+    include: { user: { select: { username: true, name: true } } }
   });
 
-  if (existingLike) {
-    throw new Error("Already liked")
-  }
+  if (existingLike) return { like: existingLike };
+
   const like = await prismaClient.like.create({
     data: {
       userId: parameters.userId,
-      postId: parameters.postId,
+      postId: parameters.postId
     },
+    include: { user: { select: { username: true, name: true } } }
   });
+
   return { like };
 };
 
@@ -46,14 +43,14 @@ export const deleteLike = async (parameters: {
   userId: string;
   postId: string;
 }): Promise<void> => {
-  try {
-    await prismaClient.like.deleteMany({
-      where: {
-        userId: parameters.userId,
-        postId: parameters.postId,
-      },
-    });
-  } catch (error) {
-    throw new Error("Failed to delete like");
-  }
+  const like = await prismaClient.like.findUnique({
+    where: { userId_postId: { userId: parameters.userId, postId: parameters.postId } }
+  });
+
+  if (!like) throw LikeError.NOT_FOUND;
+  if (like.userId !== parameters.userId) throw LikeError.UNAUTHORIZED;
+
+  await prismaClient.like.delete({
+    where: { userId_postId: { userId: parameters.userId, postId: parameters.postId } }
+  });
 };

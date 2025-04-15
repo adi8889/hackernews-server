@@ -1,17 +1,17 @@
-import { PrismaClient } from "@prisma/client";
-
-
 import type { User } from "@prisma/client";
 
 export type GetMeResult = {
-  user:User;
+  user: Omit<User, "password">;
 };
 
 export enum GetMeError {
   BAD_REQUEST,
 }
 
-
 export type GetAllUsersResult = {
-  users: User[];
+  users: Omit<User, "password">[];
 };
+
+export enum GetAllUsersError {
+  BAD_REQUEST,
+}

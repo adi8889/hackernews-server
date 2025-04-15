@@ -1,33 +1,54 @@
 import { createMiddleware } from "hono/factory";
 import * as jwt from "jsonwebtoken";
-import { jwtsecretKey } from "../../environment";
+import { jwtSecretKey } from "../../../environment";
 
 export const tokenMiddleware = createMiddleware<{
   Variables: {
     userId: string;
   };
 }>(async (context, next) => {
+  // Extract token from the 'token' header
   const token = context.req.header("token");
+
+  // If no token is provided, return 401 Unauthorized
   if (!token) {
     return context.json(
       {
-        message: "missing Token",
+        message: "Missing Token",
       },
       401
     );
   }
 
   try {
-    const payload = jwt.verify(token, jwtsecretKey) as jwt.JwtPayload;
+    // Verify the token using the secret key
+    const payload = jwt.verify(token, jwtSecretKey) as jwt.JwtPayload;
 
+    // Extract userId from the token's 'sub' field
     const userId = payload.sub;
 
-    if (userId) {
-      context.set("userId", userId);
+    // If userId is missing or invalid, return 401 Unauthorized
+    if (!userId) {
+      return context.json(
+        {
+          message: "Unauthorized",
+        },
+        401
+      );
     }
 
+    // Set userId in the context for downstream use
+    context.set("userId", userId);
+
+    // Proceed to the next middleware or route handler
     await next();
   } catch (e) {
-    return context.json({ message: "Unauthorized token" }, 401);
+    // If token verification fails (e.g., invalid or expired token), return 401 Unauthorized
+    return context.json(
+      {
+        message: "Unauthorized",
+      },
+      401
+    );
   }
 });
