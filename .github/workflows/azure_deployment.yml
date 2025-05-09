@@ -27,7 +27,7 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.GitHubActions_1si21cs002 }}
+          creds: ${{ secrets.GitHubActions }}
 
       # INFRA ENSURE BLOCKS
       - name: Check Resource Group exists
